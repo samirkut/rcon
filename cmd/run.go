@@ -24,6 +24,7 @@ package cmd
 import (
 	"archive/tar"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -109,6 +110,12 @@ func prepContainer(imageRef, cacheDir string, forceDownload bool) error {
 	}
 
 	// extract config
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		return err
+	}
+
+	log.Println("Image docker version", cfg.DockerVersion)
 
 	return nil
 }

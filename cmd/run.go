@@ -295,7 +295,7 @@ func reexecCmd(args ...string) *exec.Cmd {
 				syscall.CLONE_NEWUTS |
 				syscall.CLONE_NEWIPC |
 				syscall.CLONE_NEWPID |
-				syscall.CLONE_NEWNET |
+				// syscall.CLONE_NEWNET |
 				syscall.CLONE_NEWUSER,
 			UidMappings: []syscall.SysProcIDMap{
 				{

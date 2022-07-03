@@ -2,6 +2,7 @@ package utils
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -9,6 +10,20 @@ import (
 )
 
 func Untar(tarball, target string) error {
+	currDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	err = os.Chdir(target)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = os.Chdir(currDir)
+	}()
+
 	reader, err := os.Open(tarball)
 	if err != nil {
 		return err
@@ -61,11 +76,19 @@ func Untar(tarball, target string) error {
 			break
 		case tar.TypeSymlink:
 			linkTarget := header.Linkname
+			path = header.Name
 			err = os.Symlink(linkTarget, path)
 			if err != nil {
-				return err
+				return fmt.Errorf("Cannot make symlink from %s to %s: %w", path, linkTarget, err)
 			}
 			break
+		case tar.TypeLink:
+			linkTarget := header.Linkname
+			path = header.Name
+			err = os.Link(linkTarget, path)
+			if err != nil {
+				return fmt.Errorf("Cannot make link from %s to %s: %w", path, linkTarget, err)
+			}
 		}
 	}
 

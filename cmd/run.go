@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -147,7 +146,7 @@ var runCmd = &cobra.Command{
 
 		// clean up rootFS on exit
 		defer func() {
-			log.Println("Removing", rootFS)
+			//log.Println("Removing", rootFS)
 			_ = os.RemoveAll(rootFS)
 		}()
 

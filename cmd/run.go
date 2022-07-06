@@ -22,21 +22,16 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"io/fs"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"rcon/container"
 	"rcon/utils"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 )
@@ -63,9 +58,19 @@ var runCmd = &cobra.Command{
 			args := []string{"ns"}
 			args = append(args, os.Args[1:]...)
 			cmd := reexecCmd(args...)
-			return cmd.Run()
+
+			err := cmd.Run()
+			if err != nil {
+				// suppress help from being shown by returning nil
+				// but lets propogate the exit code
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					os.Exit(exitErr.ExitCode())
+				}
+			}
+			return nil
 		}
 
+		// all the lines below run within a new namespace
 		imageRef := args[0]
 
 		runDir, err := cmd.Flags().GetString("run-dir")
@@ -134,12 +139,12 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		err = fetchContainer(imageRef, cacheDir, skipCache)
+		err = container.FetchContainer(imageRef, cacheDir, skipCache)
 		if err != nil {
 			return err
 		}
 
-		rootFS, cfg, err := prepContainer(imageRef, cacheDir, runDir)
+		rootFS, cfg, err := container.PrepContainer(imageRef, cacheDir, runDir)
 		if err != nil {
 			return err
 		}
@@ -150,7 +155,27 @@ var runCmd = &cobra.Command{
 			_ = os.RemoveAll(rootFS)
 		}()
 
-		return nsInitialisation(rootFS, cfg, bindMounts, tmpfsMounts, args[1:])
+		// initialize namespace with mounts, hostname
+		err = nsInitialisation(rootFS, cfg, bindMounts, tmpfsMounts)
+		if err != nil {
+			return err
+		}
+
+		// run the command - ignore args[0] since thats the image ref
+		cmdArgs := args[1:]
+		if len(cmdArgs) == 0 {
+			cmdArgs = cfg.Cmd
+		}
+
+		if len(cfg.Entrypoint) != 0 {
+			cmdArgs = append(cfg.Entrypoint, cmdArgs...)
+		}
+
+		if len(cmdArgs) == 0 {
+			return errors.New("no command to run")
+		}
+
+		return nsRun(cmdArgs[0], cmdArgs, cfg.Env)
 	},
 }
 
@@ -161,120 +186,6 @@ func init() {
 	runCmd.Flags().String("cache-dir", "~/.rcon", "cache folder for images")
 	runCmd.Flags().Bool("skip-cache", false, "use image in cache if possible")
 	runCmd.Flags().StringArray("mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
-}
-
-func fetchContainer(imageRef, cacheDir string, skipCache bool) error {
-	imageFolderLink := getImageDir(cacheDir, imageRef)
-	if skipCache && utils.PathExists(imageFolderLink) {
-		return nil
-	}
-
-	// download image manifest
-	img, err := crane.Pull(imageRef)
-	if err != nil {
-		return err
-	}
-
-	imgHash, err := img.ConfigName()
-	if err != nil {
-		return err
-	}
-
-	imgId := imgHash.String()
-
-	// download and export if not in cache
-	exportDir := filepath.Join(cacheDir, imgId)
-
-	os.MkdirAll(exportDir, 0755)
-	tarFile := filepath.Join(exportDir, "fs.tar")
-	if !utils.PathExists(tarFile) {
-		f, err := os.Create(tarFile)
-		if err != nil {
-			return err
-		}
-
-		err = crane.Export(img, f)
-		if err != nil {
-			f.Close()
-			return err
-		}
-
-		f.Close()
-	}
-
-	// extract config
-	configFilePath := filepath.Join(exportDir, "config.json")
-	if !utils.PathExists(configFilePath) {
-		data, err := img.RawConfigFile()
-		if err != nil {
-			return err
-		}
-
-		err = os.WriteFile(configFilePath, data, fs.ModePerm)
-		if err != nil {
-			return err
-		}
-	}
-
-	if utils.PathExists(imageFolderLink) {
-		// extract old symlink target. we should remove it and delete the old files
-		oldPath, err := filepath.EvalSymlinks(imageFolderLink)
-		if err != nil {
-			return err
-		}
-
-		// if the symlink is the same as exportDir we can skipt
-		if oldPath == exportDir {
-			return nil
-		}
-
-		err = os.Remove(imageFolderLink)
-		if err != nil {
-			return err
-		}
-
-		err = os.RemoveAll(oldPath)
-		if err != nil {
-			return err
-		}
-	}
-
-	// symlink imageRef -> imgId
-	return os.Symlink(exportDir, imageFolderLink)
-}
-
-func prepContainer(imageRef, cacheDir, runDir string) (string, *v1.Config, error) {
-	imgDir := getImageDir(cacheDir, imageRef)
-	tarFile := filepath.Join(imgDir, "fs.tar")
-
-	// extract filesystem
-	instanceId := uuid.NewString()
-	rootFS := filepath.Join(runDir, instanceId)
-	os.MkdirAll(rootFS, 0755)
-	err := utils.Untar(tarFile, rootFS)
-	if err != nil {
-		return "", nil, err
-	}
-
-	// load config
-	cfgFilePath := filepath.Join(imgDir, "config.json")
-	data, err := os.ReadFile(cfgFilePath)
-	if err != nil {
-		return "", nil, err
-	}
-
-	cfgFile := v1.ConfigFile{}
-	err = json.Unmarshal(data, &cfgFile)
-	if err != nil {
-		return "", nil, err
-	}
-
-	return rootFS, &cfgFile.Config, nil
-}
-
-func getImageDir(cacheDir, imageRef string) string {
-	imageRefHash := base64.StdEncoding.EncodeToString([]byte(imageRef))
-	return filepath.Join(cacheDir, imageRefHash)
 }
 
 // reference from https://github.com/moby/moby/blob/master/pkg/reexec/command_linux.go
@@ -314,98 +225,14 @@ func reexecCmd(args ...string) *exec.Cmd {
 	}
 }
 
-// Reference: https://github.com/teddyking/ns-process/blob/master/rootfs.go
-func pivotRoot(newroot string) error {
-	putold := filepath.Join(newroot, "/.pivot_root")
-
-	// bind mount newroot to itself - this is a slight hack needed to satisfy the
-	// pivot_root requirement that newroot and putold must not be on the same
-	// filesystem as the current root
-	if err := syscall.Mount(newroot, newroot, "", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
-		return err
-	}
-
-	// create putold directory
-	if err := os.MkdirAll(putold, 0700); err != nil {
-		return err
-	}
-
-	// call pivot_root
-	if err := syscall.PivotRoot(newroot, putold); err != nil {
-		return err
-	}
-
-	// ensure current working directory is set to new root
-	if err := os.Chdir("/"); err != nil {
-		return err
-	}
-
-	// umount putold, which now lives at /.pivot_root
-	putold = "/.pivot_root"
-	if err := syscall.Unmount(putold, syscall.MNT_DETACH); err != nil {
-		return err
-	}
-
-	// remove putold
-	if err := os.RemoveAll(putold); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func mountProc(newroot string) error {
-	source := "proc"
-	target := filepath.Join(newroot, "/proc")
-	fstype := "proc"
-	flags := 0
-	data := ""
-
-	if err := os.MkdirAll(target, 0755); err != nil {
-		return err
-	}
-
-	if err := syscall.Mount(source, target, fstype, uintptr(flags), data); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func mountBind(source, target string) error {
-	// create target directory
-	if err := os.MkdirAll(target, 0700); err != nil {
-		return err
-	}
-
-	return syscall.Mount(source, target, "", syscall.MS_BIND|syscall.MS_REC, "")
-}
-
-func mountTmpfs(path string, size int64) error {
-	if size < 0 {
-		return errors.New("MountTmpfs: size < 0")
-	}
-
-	var flags uintptr
-	flags = syscall.MS_NOATIME | syscall.MS_SILENT
-	flags |= syscall.MS_NODEV | syscall.MS_NOEXEC | syscall.MS_NOSUID
-
-	options := ""
-	if size >= 0 {
-		options = "size=" + strconv.FormatInt(size, 10)
-	}
-
-	return syscall.Mount("tmpfs", path, "tmpfs", flags, options)
-}
-
 // Initialize namespace
-func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmpfsMounts []TmpfsMount, cmdToRun []string) error {
+func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmpfsMounts []TmpfsMount) error {
 
-	if err := mountProc(rootFS); err != nil {
+	if err := container.MountProc(rootFS); err != nil {
 		return err
 	}
 
-	if err := pivotRoot(rootFS); err != nil {
+	if err := container.PivotRoot(rootFS); err != nil {
 		return err
 	}
 
@@ -416,31 +243,18 @@ func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmp
 	}
 
 	for _, mt := range bindMounts {
-		if err := mountBind(mt.Source, mt.Target); err != nil {
+		if err := container.MountBind(mt.Source, mt.Target); err != nil {
 			return err
 		}
 	}
 
 	for _, mt := range tmpfsMounts {
-		if err := mountTmpfs(mt.Path, mt.Size); err != nil {
+		if err := container.MountTmpfs(mt.Path, mt.Size); err != nil {
 			return err
 		}
 	}
 
-	args := cmdToRun
-	if len(cmdToRun) == 0 {
-		args = cfg.Cmd
-	}
-
-	if len(cfg.Entrypoint) != 0 {
-		args = append(cfg.Entrypoint, args...)
-	}
-
-	if len(args) == 0 {
-		return errors.New("no command to run")
-	}
-
-	return nsRun(args[0], args, cfg.Env)
+	return nil
 }
 
 // Run command in namespace

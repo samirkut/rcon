@@ -13,14 +13,22 @@ import (
 	"github.com/google/uuid"
 )
 
-func FetchContainer(imageRef, cacheDir string, skipCache bool) error {
+func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	imageFolderLink := getImageDir(cacheDir, imageRef)
 	if skipCache && utils.PathExists(imageFolderLink) {
 		return nil
 	}
 
+	opts := []crane.Option{}
+
+	// load auth if provided
+	authenticator, err := NewFileAuthenticator(authFile, imageRef)
+	if err == nil {
+		opts = append(opts, crane.WithAuth(authenticator))
+	}
+
 	// download image manifest
-	img, err := crane.Pull(imageRef)
+	img, err := crane.Pull(imageRef, opts...)
 	if err != nil {
 		return err
 	}

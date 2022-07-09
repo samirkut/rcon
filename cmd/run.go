@@ -103,6 +103,16 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
+		authFile, err := cmd.Flags().GetString("auth-file")
+		if err != nil {
+			return err
+		}
+
+		authFile, err = utils.ExpandPath(authFile)
+		if err != nil {
+			return err
+		}
+
 		skipCache, err := cmd.Flags().GetBool("skip-cache")
 		if err != nil {
 			return err
@@ -139,7 +149,7 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		err = container.FetchContainer(imageRef, cacheDir, skipCache)
+		err = container.FetchContainer(imageRef, cacheDir, authFile, skipCache)
 		if err != nil {
 			return err
 		}
@@ -183,7 +193,8 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.Flags().String("run-dir", "/tmp/rcon/run", "cache folder for images")
-	runCmd.Flags().String("cache-dir", "~/.rcon", "cache folder for images")
+	runCmd.Flags().String("cache-dir", "~/.rcon/cache", "cache folder for images")
+	runCmd.Flags().String("auth-file", "~/.rcon/auth", "auth file for accessing container registry")
 	runCmd.Flags().Bool("skip-cache", false, "use image in cache if possible")
 	runCmd.Flags().StringArray("mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
 }

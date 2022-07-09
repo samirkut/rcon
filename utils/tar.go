@@ -50,6 +50,7 @@ func Untar(tarball, target string) error {
 
 		path := filepath.Join(target, header.Name)
 		info := header.FileInfo()
+		//log.Println("Extract ", path, "attr: ", info.Mode())
 
 		switch header.Typeflag {
 		case tar.TypeDir:

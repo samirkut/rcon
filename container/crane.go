@@ -109,7 +109,20 @@ func PrepContainer(imageRef, cacheDir, runDir string) (string, *v1.Config, error
 	instanceId := uuid.NewString()
 	rootFS := filepath.Join(runDir, instanceId)
 	os.MkdirAll(rootFS, 0755)
-	err := utils.Untar(tarFile, rootFS)
+
+	// get tar file size
+	tarSize, err := utils.FileSize(tarFile)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// create tmpfs which is roughly 2 x tarsize
+	err = MountTmpfs(rootFS, tarSize*2, true)
+	if err != nil {
+		return "", nil, err
+	}
+
+	err = utils.Untar(tarFile, rootFS)
 	if err != nil {
 		return "", nil, err
 	}

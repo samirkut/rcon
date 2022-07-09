@@ -31,7 +31,6 @@ import (
 	"strings"
 	"syscall"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 )
@@ -162,11 +161,12 @@ var runCmd = &cobra.Command{
 		// clean up rootFS on exit
 		defer func() {
 			//log.Println("Removing", rootFS)
+			_ = syscall.Unmount(rootFS, 0)
 			_ = os.RemoveAll(rootFS)
 		}()
 
 		// initialize namespace with mounts, hostname
-		err = nsInitialisation(rootFS, cfg, bindMounts, tmpfsMounts)
+		err = nsInitialisation(rootFS, cfg.Hostname, bindMounts, tmpfsMounts)
 		if err != nil {
 			return err
 		}
@@ -192,10 +192,10 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().String("run-dir", "/tmp/rcon/run", "cache folder for images")
+	runCmd.Flags().String("run-dir", "~/.rcon/run", "cache folder for images")
 	runCmd.Flags().String("cache-dir", "~/.rcon/cache", "cache folder for images")
 	runCmd.Flags().String("auth-file", "~/.rcon/auth", "auth file for accessing container registry")
-	runCmd.Flags().Bool("skip-cache", false, "use image in cache if possible")
+	runCmd.Flags().Bool("skip-cache", false, "refetch image from server instead of using cache")
 	runCmd.Flags().StringArray("mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
 }
 
@@ -237,8 +237,7 @@ func reexecCmd(args ...string) *exec.Cmd {
 }
 
 // Initialize namespace
-func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmpfsMounts []TmpfsMount) error {
-
+func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tmpfsMounts []TmpfsMount) error {
 	if err := container.MountProc(rootFS); err != nil {
 		return err
 	}
@@ -247,8 +246,8 @@ func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmp
 		return err
 	}
 
-	if cfg.Hostname != "" {
-		if err := syscall.Sethostname([]byte(cfg.Hostname)); err != nil {
+	if hostname != "" {
+		if err := syscall.Sethostname([]byte(hostname)); err != nil {
 			return err
 		}
 	}
@@ -260,7 +259,7 @@ func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmp
 	}
 
 	for _, mt := range tmpfsMounts {
-		if err := container.MountTmpfs(mt.Path, mt.Size); err != nil {
+		if err := container.MountTmpfs(mt.Path, mt.Size, false); err != nil {
 			return err
 		}
 	}
@@ -270,6 +269,7 @@ func nsInitialisation(rootFS string, cfg *v1.Config, bindMounts []BindMount, tmp
 
 // Run command in namespace
 func nsRun(name string, args []string, env []string) error {
+	//log.Println("Running cmd in ns: ", name)
 	cmd := exec.Cmd{
 		Path:   name,
 		Args:   args,

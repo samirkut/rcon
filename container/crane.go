@@ -15,8 +15,11 @@ import (
 func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	imageFolderLink := getImageDir(cacheDir, imageRef)
 	if skipCache && utils.PathExists(imageFolderLink) {
+		logger.Tracef("Skip fetch of container %s", imageRef)
 		return nil
 	}
+
+	logger.Tracef("Fetching container %s", imageRef)
 
 	opts := []crane.Option{}
 
@@ -101,6 +104,8 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 }
 
 func PrepContainer(imageRef, cacheDir, rootFS string) (string, *v1.Config, error) {
+	logger.Tracef("Running prep container for %s", imageRef)
+
 	imgDir := getImageDir(cacheDir, imageRef)
 	tarFile := filepath.Join(imgDir, "fs.tar")
 

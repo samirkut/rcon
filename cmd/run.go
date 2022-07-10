@@ -1,24 +1,3 @@
-/*
-Copyright © 2022 Samir Kuthiala <samir.kuthiala@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
 package cmd
 
 import (
@@ -46,6 +25,8 @@ type BindMount struct {
 }
 
 var (
+	logger = utils.MustGetLogger()
+
 	cacheDir  string
 	runDir    string
 	authFile  string
@@ -60,6 +41,14 @@ var runCmd = &cobra.Command{
 	Long:  `Run the container based on options passed in`,
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if verboseLogging {
+			utils.SetLoggerVerbose()
+		}
+
+		if quietLogging {
+			utils.SetLoggerQuiet()
+		}
+
 		runDir, err := utils.EnsureDir(runDir)
 		if err != nil {
 			return err
@@ -110,6 +99,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if os.Args[0] != "ns" {
+			logger.Tracef("Forking with NS enabled")
 			//reexec with namespace attrs
 			args := []string{"ns"}
 			args = append(args, os.Args[1:]...)
@@ -141,7 +131,7 @@ var runCmd = &cobra.Command{
 
 		// clean up rootFS on exit
 		defer func() {
-			//log.Println("Removing", rootFS)
+			logger.Tracef("Unmounting %s", rootFS)
 			_ = syscall.Unmount(rootFS, 0)
 		}()
 
@@ -218,6 +208,8 @@ func reexecCmd(args ...string) *exec.Cmd {
 
 // Initialize namespace
 func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tmpfsMounts []TmpfsMount) error {
+	logger.Tracef("Initialize namespace and mounts")
+
 	if err := container.MountProc(rootFS); err != nil {
 		return err
 	}
@@ -227,6 +219,7 @@ func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tm
 	}
 
 	if hostname != "" {
+		logger.Tracef("set container hostname to %s", hostname)
 		if err := syscall.Sethostname([]byte(hostname)); err != nil {
 			return err
 		}
@@ -249,7 +242,7 @@ func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tm
 
 // Run command in namespace
 func nsRun(name string, args []string, env []string) error {
-	//log.Println("Running cmd in ns: ", name)
+	logger.Tracef("Launching command in container: %s (%v)", name, args)
 	cmd := exec.Cmd{
 		Path:   name,
 		Args:   args,

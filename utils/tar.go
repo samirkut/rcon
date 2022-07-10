@@ -10,6 +10,8 @@ import (
 )
 
 func Untar(tarball, target string) error {
+	logger.Trace("Untar %s into %s", tarball, target)
+
 	currDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -50,7 +52,7 @@ func Untar(tarball, target string) error {
 
 		path := filepath.Join(target, header.Name)
 		info := header.FileInfo()
-		//log.Println("Extract ", path, "attr: ", info.Mode())
+		logger.Tracef("Extracting %s (%s)", path, info.Mode().String())
 
 		switch header.Typeflag {
 		case tar.TypeDir:

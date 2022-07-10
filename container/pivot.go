@@ -10,12 +10,13 @@ import (
 func PivotRoot(newroot string) error {
 	putold := filepath.Join(newroot, "/.pivot_root")
 
-	// bind mount newroot to itself - this is a slight hack needed to satisfy the
-	// pivot_root requirement that newroot and putold must not be on the same
-	// filesystem as the current root
-	if err := MountBind(newroot, newroot); err != nil {
-		return err
-	}
+	// we can comment the following snippet since root is already mounted to tmpfs
+	// // bind mount newroot to itself - this is a slight hack needed to satisfy the
+	// // pivot_root requirement that newroot and putold must not be on the same
+	// // filesystem as the current root
+	// if err := MountBind(newroot, newroot); err != nil {
+	// 	return err
+	// }
 
 	// create putold directory
 	if err := os.MkdirAll(putold, 0700); err != nil {

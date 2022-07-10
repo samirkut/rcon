@@ -4,12 +4,15 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"rcon/utils"
 	"strconv"
 	"syscall"
 )
 
+var logger = utils.MustGetLogger()
+
 func MountProc(newroot string) error {
-	//log.Println("Mount /proc in", newroot)
+	logger.Tracef("Mount /proc in %s", newroot)
 
 	source := "proc"
 	target := filepath.Join(newroot, "/proc")
@@ -29,7 +32,7 @@ func MountProc(newroot string) error {
 }
 
 func MountBind(source, target string) error {
-	//log.Println("Mount", source, " => ", target)
+	logger.Tracef("Setup bind mount from %s => %s", source, target)
 
 	// create target directory
 	if source != target {
@@ -42,7 +45,8 @@ func MountBind(source, target string) error {
 }
 
 func MountTmpfs(path string, size int64, allowExec bool) error {
-	//log.Println("Mount", path, " (tmpfs) size", size)
+	logger.Tracef("Create tmpfs mount %s, size: %s, no-exec", path, size, !allowExec)
+
 	if size < 0 {
 		return errors.New("MountTmpfs: size < 0")
 	}

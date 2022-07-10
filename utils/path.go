@@ -38,6 +38,8 @@ func FileSize(file string) (int64, error) {
 }
 
 func EnsureDir(path string) (string, error) {
+	logger.Tracef("Ensure dir %s is created if needed", path)
+
 	path, err := ExpandPath(path)
 	if err != nil {
 		return "", err

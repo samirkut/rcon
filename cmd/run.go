@@ -45,6 +45,14 @@ type BindMount struct {
 	Target string
 }
 
+var (
+	cacheDir  string
+	runDir    string
+	authFile  string
+	mounts    = []string{}
+	skipCache bool
+)
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run image-path [command]",
@@ -52,72 +60,25 @@ var runCmd = &cobra.Command{
 	Long:  `Run the container based on options passed in`,
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if os.Args[0] != "ns" {
-			//reexec with namespace attrs
-			args := []string{"ns"}
-			args = append(args, os.Args[1:]...)
-			cmd := reexecCmd(args...)
-
-			err := cmd.Run()
-			if err != nil {
-				// suppress help from being shown by returning nil
-				// but lets propogate the exit code
-				if exitErr, ok := err.(*exec.ExitError); ok {
-					os.Exit(exitErr.ExitCode())
-				}
-			}
-			return nil
-		}
-
-		// all the lines below run within a new namespace
-		imageRef := args[0]
-
-		runDir, err := cmd.Flags().GetString("run-dir")
+		runDir, err := utils.EnsureDir(runDir)
 		if err != nil {
 			return err
 		}
 
-		runDir, err = utils.ExpandPath(runDir)
+		if runDir == "" {
+			return errors.New("--run-dir is required")
+		}
+
+		cacheDir, err = utils.EnsureDir(cacheDir)
 		if err != nil {
 			return err
 		}
 
-		err = os.MkdirAll(runDir, 0755)
-		if err != nil {
-			return err
-		}
-
-		cacheDir, err := cmd.Flags().GetString("cache-dir")
-		if err != nil {
-			return err
-		}
-
-		cacheDir, err = utils.ExpandPath(cacheDir)
-		if err != nil {
-			return err
-		}
-
-		err = os.MkdirAll(cacheDir, 0755)
-		if err != nil {
-			return err
-		}
-
-		authFile, err := cmd.Flags().GetString("auth-file")
-		if err != nil {
-			return err
+		if cacheDir == "" {
+			return errors.New("--cache-dir is required")
 		}
 
 		authFile, err = utils.ExpandPath(authFile)
-		if err != nil {
-			return err
-		}
-
-		skipCache, err := cmd.Flags().GetBool("skip-cache")
-		if err != nil {
-			return err
-		}
-
-		mounts, err := cmd.Flags().GetStringArray("mount")
 		if err != nil {
 			return err
 		}
@@ -147,6 +108,26 @@ var runCmd = &cobra.Command{
 				return errors.New("mounts not defined correctly")
 			}
 		}
+
+		if os.Args[0] != "ns" {
+			//reexec with namespace attrs
+			args := []string{"ns"}
+			args = append(args, os.Args[1:]...)
+			cmd := reexecCmd(args...)
+
+			err := cmd.Run()
+			if err != nil {
+				// suppress help from being shown by returning nil
+				// but lets propogate the exit code
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					os.Exit(exitErr.ExitCode())
+				}
+			}
+			return nil
+		}
+
+		// all the lines below run within a new namespace
+		imageRef := args[0]
 
 		err = container.FetchContainer(imageRef, cacheDir, authFile, skipCache)
 		if err != nil {
@@ -191,11 +172,11 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().String("run-dir", "~/.rcon/run", "cache folder for images")
-	runCmd.Flags().String("cache-dir", "~/.rcon/cache", "cache folder for images")
-	runCmd.Flags().String("auth-file", "~/.rcon/auth", "auth file for accessing container registry")
-	runCmd.Flags().Bool("skip-cache", false, "refetch image from server instead of using cache")
-	runCmd.Flags().StringArray("mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
+	runCmd.Flags().StringVar(&runDir, "run-dir", "~/.rcon/run", "cache folder for images")
+	runCmd.Flags().StringVar(&cacheDir, "cache-dir", "~/.rcon/cache", "cache folder for images")
+	runCmd.Flags().StringVar(&authFile, "auth-file", "~/.rcon/auth.json", "auth file for accessing container registry")
+	runCmd.Flags().BoolVar(&skipCache, "skip-cache", false, "refetch image from server instead of using cache")
+	runCmd.Flags().StringArrayVar(&mounts, "mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
 }
 
 // reference from https://github.com/moby/moby/blob/master/pkg/reexec/command_linux.go

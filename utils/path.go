@@ -36,3 +36,17 @@ func FileSize(file string) (int64, error) {
 
 	return info.Size(), nil
 }
+
+func EnsureDir(path string) (string, error) {
+	path, err := ExpandPath(path)
+	if err != nil {
+		return "", err
+	}
+
+	err = os.MkdirAll(path, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	return path, nil
+}

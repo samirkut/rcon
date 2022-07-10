@@ -45,7 +45,7 @@ func MountBind(source, target string) error {
 }
 
 func MountTmpfs(path string, size int64, allowExec bool) error {
-	logger.Tracef("Create tmpfs mount %s, size: %s, no-exec", path, size, !allowExec)
+	logger.Tracef("Create tmpfs mount %s, size: %d, no-exec: %t", path, size, !allowExec)
 
 	if size < 0 {
 		return errors.New("MountTmpfs: size < 0")

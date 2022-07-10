@@ -10,7 +10,7 @@ import (
 )
 
 func Untar(tarball, target string) error {
-	logger.Trace("Untar %s into %s", tarball, target)
+	logger.Tracef("Untar %s into %s", tarball, target)
 
 	currDir, err := os.Getwd()
 	if err != nil {

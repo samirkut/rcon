@@ -162,7 +162,6 @@ var runCmd = &cobra.Command{
 		defer func() {
 			//log.Println("Removing", rootFS)
 			_ = syscall.Unmount(rootFS, 0)
-			_ = os.RemoveAll(rootFS)
 		}()
 
 		// initialize namespace with mounts, hostname

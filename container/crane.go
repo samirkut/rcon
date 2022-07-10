@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/uuid"
 )
 
 func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
@@ -101,13 +100,11 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	return os.Symlink(exportDir, imageFolderLink)
 }
 
-func PrepContainer(imageRef, cacheDir, runDir string) (string, *v1.Config, error) {
+func PrepContainer(imageRef, cacheDir, rootFS string) (string, *v1.Config, error) {
 	imgDir := getImageDir(cacheDir, imageRef)
 	tarFile := filepath.Join(imgDir, "fs.tar")
 
 	// extract filesystem
-	instanceId := uuid.NewString()
-	rootFS := filepath.Join(runDir, instanceId)
 	os.MkdirAll(rootFS, 0755)
 
 	// get tar file size

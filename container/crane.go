@@ -19,7 +19,7 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 		return nil
 	}
 
-	logger.Tracef("Fetching container %s", imageRef)
+	logger.Infof("Fetching container %s", imageRef)
 
 	opts := []crane.Option{}
 

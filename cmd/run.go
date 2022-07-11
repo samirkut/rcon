@@ -41,15 +41,9 @@ var runCmd = &cobra.Command{
 	Long:  `Run the container based on options passed in`,
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if verboseLogging {
-			utils.SetLoggerVerbose()
-		}
+		var err error
 
-		if quietLogging {
-			utils.SetLoggerQuiet()
-		}
-
-		runDir, err := utils.EnsureDir(runDir)
+		runDir, err = utils.EnsureDir(runDir)
 		if err != nil {
 			return err
 		}

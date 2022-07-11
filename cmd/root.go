@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"rcon/utils"
+
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +18,15 @@ var rootCmd = &cobra.Command{
 	
 	The focus is on creating a runtime which can work with older kernels where podman won't work. 
 	This of course comes at a cost but in some cases the trade-off is probably worth it.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if verboseLogging {
+			utils.SetLoggerVerbose()
+		}
+
+		if quietLogging {
+			utils.SetLoggerQuiet()
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

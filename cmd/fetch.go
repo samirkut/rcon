@@ -33,7 +33,7 @@ var fetchCmd = &cobra.Command{
 
 		imageRef := args[0]
 
-		return container.FetchContainer(imageRef, cacheDir, authFile, skipCache)
+		return container.FetchContainer(imageRef, cacheDir, authFile, true)
 	},
 }
 

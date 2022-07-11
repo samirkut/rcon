@@ -14,7 +14,7 @@ import (
 
 func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	imageFolderLink := getImageDir(cacheDir, imageRef)
-	if skipCache && utils.PathExists(imageFolderLink) {
+	if !skipCache && utils.PathExists(imageFolderLink) {
 		logger.Tracef("Skip fetch of container %s", imageRef)
 		return nil
 	}
@@ -41,6 +41,7 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	}
 
 	imgId := imgHash.String()
+	logger.Infof("Fetcched image with hash: %s", imgId)
 
 	// download and export if not in cache
 	exportDir := filepath.Join(cacheDir, imgId)
@@ -48,6 +49,7 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	os.MkdirAll(exportDir, 0755)
 	tarFile := filepath.Join(exportDir, "fs.tar")
 	if !utils.PathExists(tarFile) {
+		logger.Info("Exporting filesystem as tar")
 		f, err := os.Create(tarFile)
 		if err != nil {
 			return err
@@ -65,6 +67,7 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	// extract config
 	configFilePath := filepath.Join(exportDir, "config.json")
 	if !utils.PathExists(configFilePath) {
+		logger.Info("Exporting config file")
 		data, err := img.RawConfigFile()
 		if err != nil {
 			return err
@@ -83,8 +86,9 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 			return err
 		}
 
-		// if the symlink is the same as exportDir we can skipt
+		// if the symlink is the same as exportDir we can skip
 		if oldPath == exportDir {
+			logger.Info("Skipping as it already exists")
 			return nil
 		}
 
@@ -93,6 +97,7 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 			return err
 		}
 
+		logger.Infof("Removing old image at %s", oldPath)
 		err = os.RemoveAll(oldPath)
 		if err != nil {
 			return err

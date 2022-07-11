@@ -6,10 +6,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"rcon/utils"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+
+	"rcon/container/auth"
+	"rcon/utils"
 )
 
 func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
@@ -23,10 +25,18 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 
 	opts := []crane.Option{}
 
-	// load auth if provided
-	authenticator, err := NewFileAuthenticator(authFile, imageRef)
+	// load auth file if provided
+	authenticator, err := auth.NewFileAuthenticator(authFile, imageRef)
 	if err == nil {
+		logger.Infof("Using auth from %s", authFile)
 		opts = append(opts, crane.WithAuth(authenticator))
+	} else {
+		// lets try netrc auth if auth file failed
+		authenticator, err = auth.NewNetcAuthenticator(imageRef)
+		if err == nil {
+			logger.Info("Using auth from netrc")
+			opts = append(opts, crane.WithAuth(authenticator))
+		}
 	}
 
 	// download image manifest

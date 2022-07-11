@@ -158,7 +158,7 @@ func init() {
 
 	runCmd.Flags().StringVar(&runDir, "run-dir", "~/.rcon/run", "cache folder for images")
 	runCmd.Flags().StringVar(&cacheDir, "cache-dir", "~/.rcon/cache", "cache folder for images")
-	runCmd.Flags().StringVar(&authFile, "auth-file", "~/.rcon/auth.json", "auth file for accessing container registry")
+	runCmd.Flags().StringVar(&authFile, "auth-file", "~/.rcon/auth.json", "auth file (json) for accessing container registry")
 	runCmd.Flags().BoolVar(&skipCache, "skip-cache", false, "refetch image from server instead of using cache")
 	runCmd.Flags().StringArrayVar(&mounts, "mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
 }

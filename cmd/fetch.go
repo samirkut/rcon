@@ -41,5 +41,5 @@ func init() {
 	rootCmd.AddCommand(fetchCmd)
 
 	fetchCmd.Flags().StringVar(&cacheDir, "cache-dir", "~/.rcon/cache", "cache folder for images")
-	fetchCmd.Flags().StringVar(&authFile, "auth-file", "~/.rcon/auth.json", "auth file for accessing container registry")
+	fetchCmd.Flags().StringVar(&authFile, "auth-file", "~/.rcon/auth.json", "auth file (json) for accessing container registry")
 }

@@ -105,7 +105,14 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 	}
 
 	// symlink imageRef -> imgId
-	return os.Symlink(exportDir, imageFolderLink)
+	// convert exportDir to relative path (do we care?)
+	relExportDir, err := filepath.Rel(filepath.Dir(imageFolderLink), exportDir)
+	if err == nil {
+		return os.Symlink(relExportDir, imageFolderLink)
+	} else {
+		logger.Warnf("failed to convert %s to relative path with basepath %s", exportDir, imageFolderLink)
+		return os.Symlink(exportDir, imageFolderLink)
+	}
 }
 
 func PrepContainer(imageRef, cacheDir, rootFS string) (string, *v1.Config, error) {

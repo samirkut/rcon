@@ -26,7 +26,7 @@ func (a *fixedAuthenticator) Authorization() (*authn.AuthConfig, error) {
 	return a.cfg, nil
 }
 
-func NewNetcAuthenticator(imageRef string) (authn.Authenticator, error) {
+func NewNetrcAuthenticator(imageRef string) (authn.Authenticator, error) {
 	lines, err := readNetrc()
 	if err != nil {
 		return nil, err

@@ -32,7 +32,7 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 		opts = append(opts, crane.WithAuth(authenticator))
 	} else {
 		// lets try netrc auth if auth file failed
-		authenticator, err = auth.NewNetcAuthenticator(imageRef)
+		authenticator, err = auth.NewNetrcAuthenticator(imageRef)
 		if err == nil {
 			logger.Info("Using auth from netrc")
 			opts = append(opts, crane.WithAuth(authenticator))

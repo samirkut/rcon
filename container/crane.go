@@ -25,8 +25,8 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 
 	// load auth file if provided
 	kc := authn.NewMultiKeychain(
-		authn.DefaultKeychain,
 		authn.NewKeychainFromHelper(&AuthHelper{AuthFile: authFile}),
+		authn.DefaultKeychain,
 	)
 
 	opts := []crane.Option{crane.WithAuthFromKeychain(kc)}

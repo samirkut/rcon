@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 
-	"rcon/container/auth"
 	"rcon/utils"
 )
 
@@ -23,21 +23,13 @@ func FetchContainer(imageRef, cacheDir, authFile string, skipCache bool) error {
 
 	logger.Infof("Fetching container %s", imageRef)
 
-	opts := []crane.Option{}
-
 	// load auth file if provided
-	authenticator, err := auth.NewFileAuthenticator(authFile, imageRef)
-	if err == nil {
-		logger.Infof("Using auth from %s", authFile)
-		opts = append(opts, crane.WithAuth(authenticator))
-	} else {
-		// lets try netrc auth if auth file failed
-		authenticator, err = auth.NewNetrcAuthenticator(imageRef)
-		if err == nil {
-			logger.Info("Using auth from netrc")
-			opts = append(opts, crane.WithAuth(authenticator))
-		}
-	}
+	kc := authn.NewMultiKeychain(
+		authn.DefaultKeychain,
+		authn.NewKeychainFromHelper(&AuthHelper{AuthFile: authFile}),
+	)
+
+	opts := []crane.Option{crane.WithAuthFromKeychain(kc)}
 
 	// download image manifest
 	img, err := crane.Pull(imageRef, opts...)

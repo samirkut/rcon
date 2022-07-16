@@ -14,6 +14,7 @@ var fetchCmd = &cobra.Command{
 	Short: "Fetch the provided container ref and store it in cache",
 	Long: `This command can be used to proactively fetch a certain image and store it in cache. 
 	This helps make the container run happen much faster`,
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 

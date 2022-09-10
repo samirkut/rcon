@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"rcon/container"
@@ -31,6 +32,7 @@ var (
 	runDir    string
 	authFile  string
 	mounts    = []string{}
+	extraEnvs = []string{}
 	skipCache bool
 )
 
@@ -149,7 +151,17 @@ var runCmd = &cobra.Command{
 			return errors.New("no command to run")
 		}
 
-		return nsRun(cmdArgs[0], cmdArgs, cfg.Env)
+		//process env to be passed in
+		env := cfg.Env
+		for _, e := range extraEnvs {
+			if strings.Contains(e, "=") {
+				env = append(env, e)
+			} else {
+				env = append(env, fmt.Sprintf("%s=%s", e, os.Getenv(e)))
+			}
+		}
+
+		return nsRun(cmdArgs[0], cmdArgs, env)
 	},
 }
 
@@ -161,6 +173,7 @@ func init() {
 	runCmd.Flags().StringVar(&authFile, "auth-file", "~/.rcon/auth.json", "auth file (json) for accessing container registry")
 	runCmd.Flags().BoolVar(&skipCache, "skip-cache", false, "refetch image from server instead of using cache")
 	runCmd.Flags().StringArrayVar(&mounts, "mount", nil, "mounts to pass in specified as host_path:container_path for bind mounts, or just container_path:tmpfs:size_bytes for tmpfs")
+	runCmd.Flags().StringArrayVar(&extraEnvs, "env", nil, "specify extra env vars to be injected in the form var=value. if specified simply as var then the value is deduced from current env")
 }
 
 // reference from https://github.com/moby/moby/blob/master/pkg/reexec/command_linux.go

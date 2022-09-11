@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"rcon/utils"
+
+	"github.com/samirkut/rcon/utils"
 )
 
 var (

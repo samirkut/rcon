@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"rcon/container"
-	"rcon/utils"
 	"syscall"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+
+	"github.com/samirkut/rcon/container"
+	"github.com/samirkut/rcon/utils"
 )
 
 var (

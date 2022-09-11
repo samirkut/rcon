@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "rcon/cmd"
+import "github.com/samirkut/rcon/cmd"
 
 func main() {
 	cmd.Execute()

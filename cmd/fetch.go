@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"errors"
-	"rcon/container"
-	"rcon/utils"
 
 	"github.com/spf13/cobra"
+
+	"github.com/samirkut/rcon/container"
+	"github.com/samirkut/rcon/utils"
 )
 
 // fetchCmd represents the fetch command

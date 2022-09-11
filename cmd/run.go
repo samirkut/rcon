@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"rcon/container"
-	"rcon/utils"
 	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
+
+	"github.com/samirkut/rcon/container"
+	"github.com/samirkut/rcon/utils"
 )
 
 type TmpfsMount struct {

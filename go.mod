@@ -1,4 +1,4 @@
-module rcon
+module github.com/samirkut/rcon
 
 go 1.18
 

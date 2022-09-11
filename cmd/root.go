@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"rcon/utils"
-
 	"github.com/spf13/cobra"
+
+	"github.com/samirkut/rcon/utils"
 )
 
 var (

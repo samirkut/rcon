@@ -4,9 +4,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"rcon/utils"
 	"strconv"
 	"syscall"
+
+	"github.com/samirkut/rcon/utils"
 )
 
 var logger = utils.MustGetLogger()

@@ -65,32 +65,30 @@ func Untar(tarball, target string) error {
 			if err = os.MkdirAll(path, dirMode); err != nil {
 				return err
 			}
-			break
 		case tar.TypeReg:
 			file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
 			if err != nil {
 				return err
 			}
-			defer file.Close()
 			_, err = io.Copy(file, tarReader)
 			if err != nil {
+				_ = file.Close()
 				return err
 			}
-			break
+			_ = file.Close()
 		case tar.TypeSymlink:
 			linkTarget := header.Linkname
 			path = header.Name
 			err = os.Symlink(linkTarget, path)
 			if err != nil {
-				return fmt.Errorf("Cannot make symlink from %s to %s: %w", path, linkTarget, err)
+				return fmt.Errorf("cannot make symlink from %s to %s: %w", path, linkTarget, err)
 			}
-			break
 		case tar.TypeLink:
 			linkTarget := header.Linkname
 			path = header.Name
 			err = os.Link(linkTarget, path)
 			if err != nil {
-				return fmt.Errorf("Cannot make link from %s to %s: %w", path, linkTarget, err)
+				return fmt.Errorf("cannot make link from %s to %s: %w", path, linkTarget, err)
 			}
 		}
 	}

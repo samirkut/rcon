@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -218,6 +219,21 @@ func reexecCmd(args ...string) *exec.Cmd {
 func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tmpfsMounts []TmpfsMount) error {
 	logger.Tracef("Initialize namespace and mounts")
 
+	for _, mt := range bindMounts {
+		targetInNewRoot := filepath.Join(rootFS, mt.Target)
+
+		if err := container.MountBind(mt.Source, targetInNewRoot); err != nil {
+			return err
+		}
+	}
+
+	for _, mt := range tmpfsMounts {
+		pathInNewRoot := filepath.Join(rootFS, mt.Path)
+		if err := container.MountTmpfs(pathInNewRoot, mt.Size, false); err != nil {
+			return err
+		}
+	}
+
 	if err := container.MountProc(rootFS); err != nil {
 		return err
 	}
@@ -229,18 +245,6 @@ func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tm
 	if hostname != "" {
 		logger.Tracef("set container hostname to %s", hostname)
 		if err := syscall.Sethostname([]byte(hostname)); err != nil {
-			return err
-		}
-	}
-
-	for _, mt := range bindMounts {
-		if err := container.MountBind(mt.Source, mt.Target); err != nil {
-			return err
-		}
-	}
-
-	for _, mt := range tmpfsMounts {
-		if err := container.MountTmpfs(mt.Path, mt.Size, false); err != nil {
 			return err
 		}
 	}

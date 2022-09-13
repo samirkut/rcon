@@ -35,10 +35,26 @@ func MountProc(newroot string) error {
 func MountBind(source, target string) error {
 	logger.Tracef("Setup bind mount from %s => %s", source, target)
 
-	// create target directory
-	if source != target {
-		if err := os.MkdirAll(target, 0700); err != nil {
+	fi, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	// ensure target exists
+	if fi.IsDir() {
+		err = os.MkdirAll(target, 0700)
+		if err != nil {
 			return err
+		}
+	} else {
+		// only create file if it doesnt exist
+		_, err := os.Stat(target)
+		if os.IsNotExist(err) {
+			f, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+			_ = f.Close()
 		}
 	}
 

@@ -250,9 +250,21 @@ func nsInitialisation(rootFS string, hostname string, bindMounts []BindMount, tm
 
 // Run command in namespace
 func nsRun(name string, args []string, env []string) error {
+	// get path if set in env. if not the findExecInPath will fallback to current env
+	// set for this process - which may not make much sense in a container
+	pathEnv := utils.Findenv(env, "PATH")
+
+	// filename is the complete path of the "name" passed in
+	// this is done, since the env passed is not used to find the executable
+	filename, err := utils.FindExecInPath(name, pathEnv)
+	if err != nil {
+		logger.Warnf("Cannot find %s in PATH (%s)", name, pathEnv)
+		return err
+	}
+
 	logger.Tracef("Launching command in container: %s (%v)", name, args)
 	cmd := exec.Cmd{
-		Path:   name,
+		Path:   filename,
 		Args:   args,
 		Env:    env,
 		Stdin:  os.Stdin,

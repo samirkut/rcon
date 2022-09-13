@@ -132,8 +132,8 @@ func PrepContainer(imageRef, cacheDir, rootFS string) (string, *v1.Config, error
 		return "", nil, err
 	}
 
-	// create tmpfs which is roughly 2 x tarsize
-	err = MountTmpfs(rootFS, tarSize*2, true)
+	// create tmpfs which is roughly 10x tarsize
+	err = MountTmpfs(rootFS, tarSize*10, true)
 	if err != nil {
 		return "", nil, err
 	}
